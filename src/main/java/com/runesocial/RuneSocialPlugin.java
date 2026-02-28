@@ -50,7 +50,7 @@ public class RuneSocialPlugin extends Plugin
 
 	private ScheduledExecutorService scheduler;
 
-	// Cache de perfiles de jugadores cercanos
+	// Nearby player profiles cache
 	public final Map<String, PlayerProfile> nearbyProfiles = new HashMap<>();
 
 	@Override
@@ -59,7 +59,7 @@ public class RuneSocialPlugin extends Plugin
 		overlayManager.add(nameOverlay);
 		scheduler = Executors.newSingleThreadScheduledExecutor();
 
-		// Polling cada 5 segundos
+		// Polling every 5 seconds
 		scheduler.scheduleAtFixedRate(this::pollNearbyPlayers, 5, 5, TimeUnit.SECONDS);
 	}
 
@@ -81,7 +81,7 @@ public class RuneSocialPlugin extends Plugin
 	{
 		if (event.getGameState() == GameState.LOGGED_IN)
 		{
-			// Registrar jugador al loguearse
+			// Register player when first logged in
 			scheduler.submit(this::registerPlayer);
 		}
 	}
@@ -94,28 +94,26 @@ public class RuneSocialPlugin extends Plugin
 		String username = local.getName();
 		if (username == null) return;
 
-		// Ver si ya tenemos apiKey guardada
+		// Check if we already have a saved apiKey
 		String savedKey = configManager.getConfiguration(CONFIG_GROUP, API_KEY_CONFIG);
 		if (savedKey != null && !savedKey.isEmpty())
 		{
 			apiKey = savedKey;
-			log.debug("ApiKey cargada del config: {}", apiKey);
 			syncProfile();
 			return;
 		}
 
-		// Registrar en el servidor
+		// Register on the server
 		String newKey = apiClient.register(username);
 		if (newKey != null)
 		{
 			apiKey = newKey;
 			configManager.setConfiguration(CONFIG_GROUP, API_KEY_CONFIG, apiKey);
-			log.debug("Registrado con apiKey: {}", apiKey);
 			syncProfile();
 		}
 	}
 
-	// Sincroniza tu perfil al servidor
+	// Sync your profile to the server
 	public void syncProfile()
 	{
 		Player local = client.getLocalPlayer();
@@ -124,7 +122,7 @@ public class RuneSocialPlugin extends Plugin
 		String username = local.getName();
 		if (username == null) return;
 
-		// Construir mapa de pets
+		// Build pet map
 		Map<String, Map<String, String>> pets = new HashMap<>();
 		for (NPC npc : client.getNpcs())
 		{
@@ -149,7 +147,8 @@ public class RuneSocialPlugin extends Plugin
 		apiClient.updateProfile(username, apiKey, config, pets);
 	}
 
-	// Consulta jugadores cercanos y actualiza el cache
+
+	// Query nearby players and update cache
 	private void pollNearbyPlayers()
 	{
 		if (client.getGameState() != GameState.LOGGED_IN) return;
@@ -186,7 +185,7 @@ public class RuneSocialPlugin extends Plugin
 		NPC follower = client.getFollower();
 		if (follower == null)
 		{
-			sendChatMessage("No tienes ninguna mascota siguiéndote.");
+			sendChatMessage("You don't have any pet following you.");
 			return;
 		}
 
@@ -226,23 +225,24 @@ public class RuneSocialPlugin extends Plugin
 			}
 			else
 			{
-				sendChatMessage("Tu mascota se llama: <col=ff00ff>" + existingName + "</col>. Escribe ::petname para cambiarle el nombre.");
+				sendChatMessage("Your pet's name is: <col=ff00ff>" + existingName + "</col>. Type ::petname to change it.");
 			}
 		}
 	}
 
 	private void askPetName(NPC follower)
 	{
-		String petDisplayName = follower.getName() != null ? follower.getName() : "tu mascota";
-		sendChatMessage("Escribe <col=ff00ff>::petname</col> para asignarle un nombre a tu mascota.");
+		String petDisplayName = follower.getName() != null ? follower.getName() : "your pet";
+		sendChatMessage("Type <col=ff00ff>::petname</col> to assign a name to your pet.");
 
-		chatboxPanelManager.openTextInput("¿Cómo se llama " + petDisplayName + "? (deja vacío para omitir)")
+
+		chatboxPanelManager.openTextInput("What is your pet's name? (" + petDisplayName + ") (leave empty to skip)")
 				.onDone((input) -> {
 					String trimmed = Text.removeTags(input).trim();
 					if (!trimmed.isEmpty())
 					{
 						petNameManager.setPetName(follower.getId(), trimmed);
-						sendChatMessage("Nombre guardado: <col=ff00ff>" + trimmed + "</col> para " + petDisplayName + ".");
+						sendChatMessage("Name saved: <col=ff00ff>" + trimmed + "</col> for " + petDisplayName + ".");
 						syncProfile();
 					}
 				})

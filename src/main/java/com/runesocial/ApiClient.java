@@ -20,7 +20,7 @@ public class ApiClient {
     @Inject private OkHttpClient httpClient;
     @Inject private Gson gson;
 
-    // Registra al jugador y devuelve su apiKey
+    // Registers the player and returns their apiKey
     public String register(String username) {
         Request request = new Request.Builder()
                 .url(BASE_URL + "/player/register?username=" + username)
@@ -31,12 +31,12 @@ public class ApiClient {
             Map<?, ?> map = gson.fromJson(response.body().string(), Map.class);
             return (String) map.get("apiKey");
         } catch (IOException e) {
-            log.error("Error registrando jugador", e);
+            log.error("Error registering player", e);
             return null;
         }
     }
 
-    // Actualiza tu perfil en el servidor
+    // Updates your profile on the server
     public void updateProfile(String username, String apiKey, RuneSocialConfig config, Map<String, Map<String, String>> pets) {
         Map<String, Object> body = new HashMap<>();
         body.put("username", username);
@@ -55,7 +55,7 @@ public class ApiClient {
 
         httpClient.newCall(request).enqueue(new Callback() {
             @Override public void onFailure(Call call, IOException e) {
-                log.error("Error actualizando perfil", e);
+                log.error("Error updating profile", e);
             }
             @Override public void onResponse(Call call, Response response) {
                 response.close();
@@ -63,7 +63,7 @@ public class ApiClient {
         });
     }
 
-    // Consulta jugadores cercanos
+    // Query nearby players
     public List<PlayerProfile> fetchPlayers(List<String> usernames) {
         Map<String, Object> body = Map.of("usernames", usernames);
         RequestBody requestBody = RequestBody.create(JSON, gson.toJson(body));
@@ -77,7 +77,7 @@ public class ApiClient {
             if (!response.isSuccessful() || response.body() == null) return List.of();
             return List.of(gson.fromJson(response.body().string(), PlayerProfile[].class));
         } catch (IOException e) {
-            log.error("Error consultando jugadores", e);
+            log.error("Error in query", e);
             return List.of();
         }
     }
