@@ -28,7 +28,11 @@ import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
 
 @Slf4j
-@PluginDescriptor(name = "RuneSocial")
+@PluginDescriptor(
+		name = "RuneSocial",
+		description = "A social plugin for OSRS players. Show your mood, name effects, and pet names to other players.",
+		tags = {"social", "players", "pets", "community"}
+)
 public class RuneSocialPlugin extends Plugin
 {
 	private static final String CONFIG_GROUP = "RuneSocial";
