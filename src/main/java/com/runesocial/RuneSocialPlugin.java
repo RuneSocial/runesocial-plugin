@@ -117,7 +117,7 @@ public class RuneSocialPlugin extends Plugin
 						if (petData != null)
 						{
 							petName = petData.name;
-							if (petData.color != null) petColor = petData.color;
+
 						}
 					}
 				}
