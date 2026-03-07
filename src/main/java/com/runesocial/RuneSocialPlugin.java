@@ -20,6 +20,7 @@ import net.runelite.client.chat.QueuedMessage;
 import net.runelite.api.events.CommandExecuted;
 import net.runelite.api.events.GameStateChanged;
 import net.runelite.api.GameState;
+import net.runelite.client.events.ConfigChanged;
 
 import java.awt.Color;
 import java.util.*;
@@ -42,15 +43,17 @@ public class RuneSocialPlugin extends Plugin
 	@Inject private RuneSocialConfig config;
 	@Inject private OverlayManager overlayManager;
 	@Inject private NameOverlay nameOverlay;
-	@Inject private PetNameManager petNameManager;
 	@Inject private ConfigManager configManager;
 	@Inject private ChatboxPanelManager chatboxPanelManager;
 	@Inject private ChatMessageManager chatMessageManager;
 	@Inject private ApiClient apiClient;
+	@Inject private net.runelite.client.callback.ClientThread clientThread;
 
 	private int lastFollowerId = -1;
 	private boolean askedForName = false;
 	private String apiKey = null;
+	public String activePetName = null;    // ← aquí
+	public Color activePetColor = null;    // ← aquí
 
 	private ScheduledExecutorService scheduler;
 
@@ -61,9 +64,12 @@ public class RuneSocialPlugin extends Plugin
 	protected void startUp() throws Exception
 	{
 		overlayManager.add(nameOverlay);
+		lastFollowerId = -1;        // ← agrega esto
+		activePetName = null;       // ← agrega esto
+		activePetColor = null;      // ← agrega esto
 		scheduler = Executors.newSingleThreadScheduledExecutor();
 
-		// Polling every 5 seconds
+		// Poll nearby players every 5 seconds
 		scheduler.scheduleAtFixedRate(this::pollNearbyPlayers, 5, 5, TimeUnit.SECONDS);
 	}
 
@@ -76,20 +82,66 @@ public class RuneSocialPlugin extends Plugin
 		lastFollowerId = -1;
 		askedForName = false;
 		apiKey = null;
+		activePetName = null;    // ← aquí
+		activePetColor = null;   // ← aquí
 	}
 
+	@Subscribe
+	public void onConfigChanged(ConfigChanged event)
+	{
+		if (!event.getGroup().equals("RuneSocial")) return;
 
+		clientThread.invoke(() -> {
+			NPC follower = client.getFollower();
+			String petId = follower != null ? String.valueOf(follower.getId()) : null;
+
+			scheduler.submit(() -> {
+				Player local = client.getLocalPlayer();
+				if (local == null || apiKey == null) return;
+
+				String username = local.getName();
+				if (username == null) return;
+
+				String petName = null;
+				String petColor = String.format("#%02X%02X%02X",
+						config.petNameColor().getRed(),
+						config.petNameColor().getGreen(),
+						config.petNameColor().getBlue());
+
+				if (petId != null)
+				{
+					PlayerProfile profile = apiClient.fetchOwnProfile(username);
+					if (profile != null && profile.pets != null)
+					{
+						PlayerProfile.PetInfo petData = profile.pets.get(petId);
+						if (petData != null)
+						{
+							petName = petData.name;
+							if (petData.color != null) petColor = petData.color;
+						}
+					}
+				}
+
+				apiClient.updateProfile(username, apiKey, config, petId, petName, petColor);
+				activePetColor = config.petNameColor();  // ← aquí
+			});
+		});
+	}
 
 	@Subscribe
 	public void onGameStateChanged(GameStateChanged event)
 	{
+		if (event.getGameState() == GameState.LOADING)  // ← LOADING en vez de LOGGED_IN
+		{
+			lastFollowerId = -1;
+			activePetName = null;
+			activePetColor = null;
+		}
 		if (event.getGameState() == GameState.LOGGED_IN)
 		{
-			// Register player when first logged in
 			scheduler.submit(this::registerPlayer);
 		}
 	}
-
 	private void registerPlayer()
 	{
 		Player local = client.getLocalPlayer();
@@ -98,7 +150,6 @@ public class RuneSocialPlugin extends Plugin
 		String username = local.getName();
 		if (username == null) return;
 
-		// Check if we already have a saved apiKey
 		String savedKey = configManager.getConfiguration(CONFIG_GROUP, API_KEY_CONFIG);
 		if (savedKey != null && !savedKey.isEmpty())
 		{
@@ -107,7 +158,6 @@ public class RuneSocialPlugin extends Plugin
 			return;
 		}
 
-		// Register on the server
 		String newKey = apiClient.register(username);
 		if (newKey != null)
 		{
@@ -117,40 +167,48 @@ public class RuneSocialPlugin extends Plugin
 		}
 	}
 
-	// Sync your profile to the server
+	// Sync your profile to the server - only sends active pet
 	public void syncProfile()
 	{
+
 		Player local = client.getLocalPlayer();
+
 		if (local == null || apiKey == null) return;
 
 		String username = local.getName();
 		if (username == null) return;
 
-		// Build pet map
-		Map<String, Map<String, String>> pets = new HashMap<>();
-		for (NPC npc : client.getNpcs())
+		NPC follower = client.getFollower();
+		if (follower == null)
 		{
-			if (npc == null) continue;
-			var comp = npc.getComposition();
-			if (comp != null && comp.isFollower())
-			{
-				int id = npc.getId();
-				String petName = petNameManager.getPetName(id);
-				Color petColor = petNameManager.getPetColor(id, config.petNameColor());
-				if (!petName.isEmpty())
-				{
-					pets.put(String.valueOf(id), Map.of(
-							"name", petName,
-							"color", String.format("#%02X%02X%02X",
-									petColor.getRed(), petColor.getGreen(), petColor.getBlue())
-					));
-				}
-			}
+			apiClient.updateProfile(username, apiKey, config, null, null, null);
+			return;
 		}
 
-		apiClient.updateProfile(username, apiKey, config, pets);
-	}
+		// Fetch own profile to get active pet name
+		scheduler.submit(() -> {
+			PlayerProfile profile = apiClient.fetchOwnProfile(username);
+			String petId = String.valueOf(follower.getId());
+			String petName = null;
+			String petColor = String.format("#%02X%02X%02X",
+					config.petNameColor().getRed(),
+					config.petNameColor().getGreen(),
+					config.petNameColor().getBlue());
 
+			if (profile != null && profile.pets != null)
+			{
+				PlayerProfile.PetInfo petData = profile.pets.get(petId);
+				if (petData != null)
+				{
+					petName = petData.name;
+					String savedColor = petData.color;
+					if (savedColor != null) petColor = savedColor;
+				}
+			}
+
+			apiClient.updateProfile(username, apiKey, config, petId, petName, petColor);
+		});
+	}
 
 	// Query nearby players and update cache
 	private void pollNearbyPlayers()
@@ -203,7 +261,10 @@ public class RuneSocialPlugin extends Plugin
 		{
 			scheduler.submit(this::registerPlayer);
 		}
+
 		NPC follower = client.getFollower();
+
+
 
 		if (follower == null)
 		{
@@ -218,37 +279,94 @@ public class RuneSocialPlugin extends Plugin
 		lastFollowerId = followerId;
 		askedForName = false;
 
-		String existingName = petNameManager.getPetName(followerId);
+		// Fetch pet name from server
+		scheduler.submit(() -> {
+			Player local = client.getLocalPlayer();
+			if (local == null) return;
 
-		if (!askedForName)
-		{
-			askedForName = true;
-			if (existingName.isEmpty())
+
+			PlayerProfile profile = apiClient.fetchOwnProfile(local.getName());
+
+
+			String petId = String.valueOf(followerId);
+			String existingName = null;
+			String existingColor = null;
+			log.debug("petId buscado: {}", petId);  // ← luego el log
+			log.debug("pets en perfil: {}", profile != null && profile.pets != null ? profile.pets.keySet() : "null");
+
+			if (profile != null && profile.pets != null)
 			{
-				askPetName(follower);
+				PlayerProfile.PetInfo petData = profile.pets.get(petId);
+				if (petData != null)
+				{
+					existingName = petData.name;
+					existingColor = petData.color;
+				}
 			}
-			else
+
+			activePetName = existingName;  // ← aquí
+			activePetColor = existingColor != null  // ← aquí
+					? hexToColor(existingColor)
+					: config.petNameColor();
+
+			final String finalName = existingName;
+			log.debug("askedForName: {}", askedForName);
+			log.debug("finalName: {}", finalName);
+			if (!askedForName)
 			{
-				sendChatMessage("Your pet's name is: <col=ff00ff>" + existingName + "</col>. Type ::petname to change it.");
+				askedForName = true;
+				if (finalName == null || finalName.isEmpty())
+				{
+					clientThread.invokeLater(() -> askPetName(follower));
+				}
+				else
+				{
+					sendChatMessage("Your pet's name is: <col=ff00ff>" + finalName + "</col>. Type ::petname to change it.");
+				}
 			}
-		}
+		});
 	}
 
 	private void askPetName(NPC follower)
 	{
 		String petDisplayName = follower.getName() != null ? follower.getName() : "your pet";
-		sendChatMessage("Type <col=ff00ff>::petname</col> to assign a name to your pet.");
-
+		int followerId = follower.getId();
 
 		chatboxPanelManager.openTextInput("What is your pet's name? (" + petDisplayName + ") (leave empty to skip)")
 				.onDone((input) -> {
 					String trimmed = Text.removeTags(input).trim();
-					if (!trimmed.isEmpty())
-					{
-						petNameManager.setPetName(follower.getId(), trimmed);
+					if (trimmed.isEmpty()) return;
+
+					scheduler.submit(() -> {
+
+						Player local = client.getLocalPlayer();
+						if (local == null || apiKey == null) return;
+
+						String username = local.getName();
+						if (username == null) return;
+
+
+						boolean isValid = apiClient.validatePetName(trimmed, username);
+						if (!isValid)
+						{
+							sendChatMessage("<col=ff0000>Invalid or prohibited name. Type <col=ff00ff>::petname</col><col=ff0000> to try again.</col>");
+							askedForName = false;  // ← permite volver a intentar
+							return;
+						}
+
+						String petColor = String.format("#%02X%02X%02X",
+								config.petNameColor().getRed(),
+								config.petNameColor().getGreen(),
+								config.petNameColor().getBlue());
+
+						apiClient.updateProfile(username, apiKey, config,
+								String.valueOf(followerId), trimmed, petColor);
+
+						activePetName = trimmed;
+						activePetColor = config.petNameColor();
+
 						sendChatMessage("Name saved: <col=ff00ff>" + trimmed + "</col> for " + petDisplayName + ".");
-						syncProfile();
-					}
+					});
 				})
 				.build();
 	}
@@ -259,6 +377,15 @@ public class RuneSocialPlugin extends Plugin
 				.type(ChatMessageType.GAMEMESSAGE)
 				.runeLiteFormattedMessage(message)
 				.build());
+	}
+
+	private Color hexToColor(String hex)  // ← aquí
+	{
+		try {
+			return Color.decode(hex);
+		} catch (Exception e) {
+			return config.petNameColor();
+		}
 	}
 
 	@Provides

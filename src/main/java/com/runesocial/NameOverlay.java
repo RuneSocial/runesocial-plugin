@@ -133,9 +133,10 @@ public class NameOverlay extends Overlay {
             if (composition != null && composition.isFollower()) {
                 if (npc.getInteracting() == localPlayer ||
                         (npc.getName() != null && npc.getName().equals(localPlayer.getName()))) {
-                    String customPetName = petNameManager.getPetName(npc.getId());
-                    if (!customPetName.isEmpty()) {
-                        drawPetName(graphics, npc, customPetName, config.petNameColor());
+                    // DESPUÉS
+                    if (plugin.activePetName != null && !plugin.activePetName.isEmpty()) {
+                        Color petColor = plugin.activePetColor != null ? plugin.activePetColor : config.petNameColor();
+                        drawPetName(graphics, npc, plugin.activePetName, petColor);
                     }
                 }
             }
