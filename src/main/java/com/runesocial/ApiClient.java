@@ -12,6 +12,7 @@ import java.nio.charset.StandardCharsets;
 import java.util.List;
 import java.util.Map;
 
+
 @Slf4j
 @Singleton
 public class ApiClient {
@@ -21,6 +22,7 @@ public class ApiClient {
 
     @Inject private OkHttpClient httpClient;
     @Inject private Gson gson;
+    @Inject private RuneSocialPlugin plugin;  // ← agrega esto
 
     // Registers the player and returns their apiKey
     public String register(String username) {
@@ -67,11 +69,35 @@ public class ApiClient {
                 log.error("Error updating profile", e);
             }
             @Override public void onResponse(Call call, Response response) {
+                if (response.code() == 429) {
+                    try {
+                        String body = response.body() != null ? response.body().string() : "";
+                        Map<?, ?> map = gson.fromJson(body, Map.class);
+                        String msg = (String) map.get("message");
+                        if (msg != null) plugin.sendChatMessage("<col=ff0000>" + msg + "</col>");
+                    } catch (Exception e) {
+                        log.error("Error reading rate limit response", e);
+                    }
+                }
                 response.close();
             }
         });
     }
 
+
+    public RemoteConfig fetchConfig() {
+        Request request = new Request.Builder()
+                .url(BASE_URL + "/config")
+                .build();
+
+        try (Response response = httpClient.newCall(request).execute()) {
+            if (!response.isSuccessful() || response.body() == null) return null;
+            return gson.fromJson(response.body().string(), RemoteConfig.class);
+        } catch (IOException e) {
+            log.error("Error fetching remote config", e);
+            return null;
+        }
+    }
     // Fetch your own profile from the server
     public PlayerProfile fetchOwnProfile(String username) {
         String encoded = URLEncoder.encode(username, StandardCharsets.UTF_8);
@@ -89,7 +115,7 @@ public class ApiClient {
     }
 
     // Validate pet name on the server before saving
-    public boolean validatePetName(String name, String username) {
+    public String validatePetName(String name, String username) {
         Map<String, String> body = Map.of("name", name, "username", username);
         RequestBody requestBody = RequestBody.create(JSON, gson.toJson(body));
 
@@ -99,10 +125,13 @@ public class ApiClient {
                 .build();
 
         try (Response response = httpClient.newCall(request).execute()) {
-            return response.isSuccessful();
+            if (response.isSuccessful()) return null;
+            if (response.body() == null) return "Invalid or prohibited name.";
+            Map<?, ?> map = gson.fromJson(response.body().string(), Map.class);
+            return (String) map.get("error");
         } catch (IOException e) {
             log.error("Error validating pet name", e);
-            return true;
+            return null;
         }
     }
 

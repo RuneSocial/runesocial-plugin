@@ -28,6 +28,13 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
 
+
+class RemoteConfig {
+	public int maxTiles = 5;
+	public int maxPlayers = 20;
+	public int pollInterval = 5000;
+}
+
 @Slf4j
 @PluginDescriptor(
 		name = "RuneSocial",
@@ -54,23 +61,30 @@ public class RuneSocialPlugin extends Plugin
 	private String apiKey = null;
 	public String activePetName = null;    // ← aquí
 	public Color activePetColor = null;    // ← aquí
+	public RemoteConfig remoteConfig = new RemoteConfig();  // ← aquí
 
 	private ScheduledExecutorService scheduler;
 
 	// Nearby player profiles cache
 	public final Map<String, PlayerProfile> nearbyProfiles = new HashMap<>();
-
 	@Override
 	protected void startUp() throws Exception
 	{
 		overlayManager.add(nameOverlay);
-		lastFollowerId = -1;        // ← agrega esto
-		activePetName = null;       // ← agrega esto
-		activePetColor = null;      // ← agrega esto
+		lastFollowerId = -1;
+		activePetName = null;
+		activePetColor = null;
 		scheduler = Executors.newSingleThreadScheduledExecutor();
 
-		// Poll nearby players every 5 seconds
-		scheduler.scheduleAtFixedRate(this::pollNearbyPlayers, 5, 5, TimeUnit.SECONDS);
+		scheduler.submit(() -> {
+			RemoteConfig fetched = apiClient.fetchConfig();
+			if (fetched != null) remoteConfig = fetched;
+
+			scheduler.scheduleAtFixedRate(this::pollNearbyPlayers,
+					remoteConfig.pollInterval / 1000,
+					remoteConfig.pollInterval / 1000,
+					TimeUnit.SECONDS);
+		});
 	}
 
 	@Override
@@ -170,9 +184,7 @@ public class RuneSocialPlugin extends Plugin
 	// Sync your profile to the server - only sends active pet
 	public void syncProfile()
 	{
-
 		Player local = client.getLocalPlayer();
-
 		if (local == null || apiKey == null) return;
 
 		String username = local.getName();
@@ -185,9 +197,15 @@ public class RuneSocialPlugin extends Plugin
 			return;
 		}
 
-		// Fetch own profile to get active pet name
 		scheduler.submit(() -> {
 			PlayerProfile profile = apiClient.fetchOwnProfile(username);
+
+			// ← aquí también
+			if (profile != null && profile.petNameStatus != null && !profile.petNameStatus.isEmpty()) {
+				clientThread.invokeLater(() ->
+						sendChatMessage("<col=ffff00>[RuneSocial]</col> " + profile.petNameStatus)
+				);
+			}
 			String petId = String.valueOf(follower.getId());
 			String petName = null;
 			String petColor = String.format("#%02X%02X%02X",
@@ -218,13 +236,20 @@ public class RuneSocialPlugin extends Plugin
 		List<Player> players = client.getPlayers();
 		if (players == null || players.isEmpty()) return;
 
-		List<String> usernames = new ArrayList<>();
-		for (Player p : players)
-		{
-			if (p == null || p == client.getLocalPlayer()) continue;
-			String name = p.getName();
-			if (name != null) usernames.add(name);
-		}
+		Player local = client.getLocalPlayer();
+		if (local == null) return;
+
+		List<String> usernames = players.stream()
+				.filter(p -> p != null && p != local && p.getName() != null)
+				.filter(p -> p.getWorldLocation().distanceTo(local.getWorldLocation()) <= remoteConfig.maxTiles)
+				.sorted((a, b) -> {
+					int distA = a.getWorldLocation().distanceTo(local.getWorldLocation());
+					int distB = b.getWorldLocation().distanceTo(local.getWorldLocation());
+					return Integer.compare(distA, distB);
+				})
+				.limit(remoteConfig.maxPlayers)
+				.map(Player::getName)
+				.collect(java.util.stream.Collectors.toList());
 
 		if (usernames.isEmpty()) return;
 
@@ -286,7 +311,11 @@ public class RuneSocialPlugin extends Plugin
 
 
 			PlayerProfile profile = apiClient.fetchOwnProfile(local.getName());
-
+			if (profile != null && profile.petNameStatus != null && !profile.petNameStatus.isEmpty()) {
+				clientThread.invokeLater(() ->
+						sendChatMessage("<col=ffff00>[RuneSocial]</col> " + profile.petNameStatus)
+				);
+			}
 
 			String petId = String.valueOf(followerId);
 			String existingName = null;
@@ -346,11 +375,11 @@ public class RuneSocialPlugin extends Plugin
 						if (username == null) return;
 
 
-						boolean isValid = apiClient.validatePetName(trimmed, username);
-						if (!isValid)
+						String nameError = apiClient.validatePetName(trimmed, username);
+						if (nameError != null)
 						{
-							sendChatMessage("<col=ff0000>Invalid or prohibited name. Type <col=ff00ff>::petname</col><col=ff0000> to try again.</col>");
-							askedForName = false;  // ← permite volver a intentar
+							sendChatMessage("<col=ff0000>" + nameError + "</col>");
+							askedForName = false;
 							return;
 						}
 
@@ -371,7 +400,7 @@ public class RuneSocialPlugin extends Plugin
 				.build();
 	}
 
-	private void sendChatMessage(String message)
+	public void sendChatMessage(String message)  // ← cambia private por public
 	{
 		chatMessageManager.queue(QueuedMessage.builder()
 				.type(ChatMessageType.GAMEMESSAGE)

@@ -290,7 +290,471 @@ public class NameOverlay extends Overlay {
             }
             xOffset += fm.charWidth(c);
         }
-    } else if ("FLOAT".equals(movementEffect)) {
+    }
+        else if ("TYPEWRITER".equals(movementEffect)) {
+            int totalChars = name.length();
+            double cycle = time % (totalChars + 8);
+            int visible = (int) Math.min(cycle, totalChars);
+            String partial = name.substring(0, visible);
+            int xOffset = textLocation.getX();
+            for (int i = 0; i < partial.length(); i++) {
+                char c = partial.charAt(i);
+                graphics.setColor(Color.BLACK);
+                graphics.drawString(String.valueOf(c), xOffset + 1, textLocation.getY() + 1);
+                if (colorEffect != null && colorEffect.startsWith("GRADIENT_")) {
+                    Color[] grad = getGradientColors(colorEffect);
+                    drawLetterWithGradient(graphics, c, xOffset, textLocation.getY(), grad[0], grad[1], letterHeight);
+                } else {
+                    graphics.setColor(letterColors[i]);
+                    graphics.drawString(String.valueOf(c), xOffset, textLocation.getY());
+                }
+                xOffset += fm.charWidth(c);
+            }
+
+        } else if ("SWING".equals(movementEffect)) {
+            int xOffset = textLocation.getX();
+            int totalWidth = 0;
+            for (char c : name.toCharArray()) totalWidth += fm.charWidth(c);
+            int centerX = textLocation.getX() + totalWidth / 2;
+            double angle = Math.sin(time * 0.08) * 0.25;
+            for (int i = 0; i < name.length(); i++) {
+                char c = name.charAt(i);
+                int charWidth = fm.charWidth(c);
+                double relX = xOffset - centerX;
+                int dy = (int)(relX * Math.sin(angle));
+                graphics.setColor(Color.BLACK);
+                graphics.drawString(String.valueOf(c), xOffset + 1, textLocation.getY() + dy + 1);
+                if (colorEffect != null && colorEffect.startsWith("GRADIENT_")) {
+                    Color[] grad = getGradientColors(colorEffect);
+                    drawLetterWithGradient(graphics, c, xOffset, textLocation.getY() + dy, grad[0], grad[1], letterHeight);
+                } else {
+                    graphics.setColor(letterColors[i]);
+                    graphics.drawString(String.valueOf(c), xOffset, textLocation.getY() + dy);
+                }
+                xOffset += charWidth;
+            }
+
+        } else if ("GLITCH".equals(movementEffect)) {
+            int xOffset = textLocation.getX();
+            int glitchSeed = (int)(time / 0.3);
+            for (int i = 0; i < name.length(); i++) {
+                char c = name.charAt(i);
+                java.util.Random r = new java.util.Random(glitchSeed + i * 73);
+                boolean doGlitch = r.nextInt(4) == 0;
+                int dx = doGlitch ? r.nextInt(7) - 3 : 0;
+                int dy = doGlitch ? r.nextInt(7) - 3 : 0;
+                graphics.setColor(Color.BLACK);
+                graphics.drawString(String.valueOf(c), xOffset + dx + 1, textLocation.getY() + dy + 1);
+                if (colorEffect != null && colorEffect.startsWith("GRADIENT_")) {
+                    Color[] grad = getGradientColors(colorEffect);
+                    drawLetterWithGradient(graphics, c, xOffset + dx, textLocation.getY() + dy, grad[0], grad[1], letterHeight);
+                } else {
+                    graphics.setColor(letterColors[i]);
+                    graphics.drawString(String.valueOf(c), xOffset + dx, textLocation.getY() + dy);
+                }
+                xOffset += fm.charWidth(c);
+            }
+
+        } else if ("SPIN".equals(movementEffect)) {
+            int xOffset = textLocation.getX();
+            for (int i = 0; i < name.length(); i++) {
+                char c = name.charAt(i);
+                double phase = time * 0.1 + i * (2 * Math.PI / name.length());
+                int dy = (int)(Math.sin(phase) * 6);
+                int dx = (int)(Math.cos(phase) * 2);
+                graphics.setColor(Color.BLACK);
+                graphics.drawString(String.valueOf(c), xOffset + dx + 1, textLocation.getY() + dy + 1);
+                if (colorEffect != null && colorEffect.startsWith("GRADIENT_")) {
+                    Color[] grad = getGradientColors(colorEffect);
+                    drawLetterWithGradient(graphics, c, xOffset + dx, textLocation.getY() + dy, grad[0], grad[1], letterHeight);
+                } else {
+                    graphics.setColor(letterColors[i]);
+                    graphics.drawString(String.valueOf(c), xOffset + dx, textLocation.getY() + dy);
+                }
+                xOffset += fm.charWidth(c);
+            }
+
+        } else if ("TREMBLE".equals(movementEffect)) {
+            int xOffset = textLocation.getX();
+            int trembleSeed = (int)(time / 0.1);
+            for (int i = 0; i < name.length(); i++) {
+                char c = name.charAt(i);
+                java.util.Random r = new java.util.Random(trembleSeed + i * 11);
+                int dx = r.nextInt(3) - 1;
+                int dy = r.nextInt(3) - 1;
+                graphics.setColor(Color.BLACK);
+                graphics.drawString(String.valueOf(c), xOffset + dx + 1, textLocation.getY() + dy + 1);
+                if (colorEffect != null && colorEffect.startsWith("GRADIENT_")) {
+                    Color[] grad = getGradientColors(colorEffect);
+                    drawLetterWithGradient(graphics, c, xOffset + dx, textLocation.getY() + dy, grad[0], grad[1], letterHeight);
+                } else {
+                    graphics.setColor(letterColors[i]);
+                    graphics.drawString(String.valueOf(c), xOffset + dx, textLocation.getY() + dy);
+                }
+                xOffset += fm.charWidth(c);
+            }
+
+        } else if ("DRIFT".equals(movementEffect)) {
+            int dx = (int)(Math.sin(time * 0.04) * 8);
+            int xOffset = textLocation.getX() + dx;
+            for (int i = 0; i < name.length(); i++) {
+                char c = name.charAt(i);
+                graphics.setColor(Color.BLACK);
+                graphics.drawString(String.valueOf(c), xOffset + 1, textLocation.getY() + 1);
+                if (colorEffect != null && colorEffect.startsWith("GRADIENT_")) {
+                    Color[] grad = getGradientColors(colorEffect);
+                    drawLetterWithGradient(graphics, c, xOffset, textLocation.getY(), grad[0], grad[1], letterHeight);
+                } else {
+                    graphics.setColor(letterColors[i]);
+                    graphics.drawString(String.valueOf(c), xOffset, textLocation.getY());
+                }
+                xOffset += fm.charWidth(c);
+            }
+
+        } else if ("RUBBER".equals(movementEffect)) {
+            int xOffset = textLocation.getX();
+            for (int i = 0; i < name.length(); i++) {
+                char c = name.charAt(i);
+                double phase = time * 0.12 + i * 0.4;
+                double scaleY = 1.0 + Math.sin(phase) * 0.4;
+                int charHeight = (int)(letterHeight * scaleY);
+                int dy = letterHeight - charHeight;
+                graphics.setColor(Color.BLACK);
+                graphics.drawString(String.valueOf(c), xOffset + 1, textLocation.getY() + dy + 1);
+                if (colorEffect != null && colorEffect.startsWith("GRADIENT_")) {
+                    Color[] grad = getGradientColors(colorEffect);
+                    drawLetterWithGradient(graphics, c, xOffset, textLocation.getY() + dy, grad[0], grad[1], letterHeight);
+                } else {
+                    graphics.setColor(letterColors[i]);
+                    graphics.drawString(String.valueOf(c), xOffset, textLocation.getY() + dy);
+                }
+                xOffset += fm.charWidth(c);
+            }
+
+        } else if ("FADE_LEFT".equals(movementEffect)) {
+            int totalChars = name.length();
+            double cycle = time % (totalChars * 2);
+            int hiddenCount = (int)(cycle < totalChars ? cycle : totalChars * 2 - cycle);
+
+            int xOffset = textLocation.getX();
+            for (int i = 0; i < name.length(); i++) {
+                char c = name.charAt(i);
+                if (i < hiddenCount) {
+                    xOffset += fm.charWidth(c);
+                    continue;
+                }
+                graphics.setColor(Color.BLACK);
+                graphics.drawString(String.valueOf(c), xOffset + 1, textLocation.getY() + 1);
+                if (colorEffect != null && colorEffect.startsWith("GRADIENT_")) {
+                    Color[] grad = getGradientColors(colorEffect);
+                    drawLetterWithGradient(graphics, c, xOffset, textLocation.getY(), grad[0], grad[1], letterHeight);
+                } else {
+                    graphics.setColor(letterColors[i]);
+                    graphics.drawString(String.valueOf(c), xOffset, textLocation.getY());
+                }
+                xOffset += fm.charWidth(c);
+            }
+        } else if ("FADE_RIGHT".equals(movementEffect)) {
+            int totalChars = name.length();
+            double cycle = time % (totalChars * 2);
+            int hiddenCount = (int)(cycle < totalChars ? cycle : totalChars * 2 - cycle);
+
+            int xOffset = textLocation.getX();
+            for (int i = 0; i < name.length(); i++) {
+                char c = name.charAt(i);
+                if (i >= totalChars - hiddenCount) {
+                    xOffset += fm.charWidth(c);
+                    continue;
+                }
+                graphics.setColor(Color.BLACK);
+                graphics.drawString(String.valueOf(c), xOffset + 1, textLocation.getY() + 1);
+                if (colorEffect != null && colorEffect.startsWith("GRADIENT_")) {
+                    Color[] grad = getGradientColors(colorEffect);
+                    drawLetterWithGradient(graphics, c, xOffset, textLocation.getY(), grad[0], grad[1], letterHeight);
+                } else {
+                    graphics.setColor(letterColors[i]);
+                    graphics.drawString(String.valueOf(c), xOffset, textLocation.getY());
+                }
+                xOffset += fm.charWidth(c);
+            }
+
+        } else if ("FADE".equals(movementEffect)) {
+            double cycle = (Math.sin(time * 0.05) + 1) / 2.0; // 0.0 a 1.0
+            int alpha = (int)(cycle * 255);
+
+            int xOffset = textLocation.getX();
+            for (int i = 0; i < name.length(); i++) {
+                char c = name.charAt(i);
+                Color base = letterColors[i];
+
+                graphics.setColor(new Color(0, 0, 0, Math.min(alpha, 200)));
+                graphics.drawString(String.valueOf(c), xOffset + 1, textLocation.getY() + 1);
+
+                if (colorEffect != null && colorEffect.startsWith("GRADIENT_")) {
+                    Color[] grad = getGradientColors(colorEffect);
+                    Color top = new Color(grad[0].getRed(), grad[0].getGreen(), grad[0].getBlue(), alpha);
+                    Color bot = new Color(grad[1].getRed(), grad[1].getGreen(), grad[1].getBlue(), alpha);
+                    GradientPaint gradient = new GradientPaint(xOffset, textLocation.getY() - letterHeight, top, xOffset, textLocation.getY(), bot);
+                    graphics.setPaint(gradient);
+                    graphics.drawString(String.valueOf(c), xOffset, textLocation.getY());
+                    graphics.setPaint(null);
+                } else {
+                    graphics.setColor(new Color(base.getRed(), base.getGreen(), base.getBlue(), alpha));
+                    graphics.drawString(String.valueOf(c), xOffset, textLocation.getY());
+                }
+                xOffset += fm.charWidth(c);
+            }
+        } else if ("FRACTURE".equals(movementEffect)) {
+            int xOffset = textLocation.getX();
+            int halfY = textLocation.getY() - letterHeight / 2;
+            int offsetX = (int)(Math.sin(time * 0.04) * 12);
+
+            for (int i = 0; i < name.length(); i++) {
+                char c = name.charAt(i);
+                int charWidth = fm.charWidth(c);
+
+                // mitad de abajo - se queda fija
+                Shape oldClip = graphics.getClip();
+                graphics.setClip(xOffset, halfY, charWidth + 2, letterHeight + 4);
+                graphics.setColor(Color.BLACK);
+                graphics.drawString(String.valueOf(c), xOffset + 1, textLocation.getY() + 1);
+                graphics.setColor(letterColors[i]);
+                graphics.drawString(String.valueOf(c), xOffset, textLocation.getY());
+                graphics.setClip(oldClip);
+
+                // mitad de arriba - se desplaza
+                graphics.setClip(xOffset + offsetX - 2, textLocation.getY() - letterHeight - 4, charWidth + 4, letterHeight / 2 + 4);
+                graphics.setColor(Color.BLACK);
+                graphics.drawString(String.valueOf(c), xOffset + offsetX + 1, textLocation.getY() + 1);
+                graphics.setColor(letterColors[i]);
+                graphics.drawString(String.valueOf(c), xOffset + offsetX, textLocation.getY());
+                graphics.setClip(oldClip);
+
+                xOffset += charWidth;
+            }
+
+        } else if ("SLIDE_Y".equals(movementEffect)) {
+            double cycle = (time * 0.08) % 1.0;  // ← más rápido y lineal
+            int dy = (int)(cycle * letterHeight * 2) - letterHeight;  // ← siempre de arriba hacia abajo
+
+            int totalWidth = fm.stringWidth(name);
+            Shape oldClip = graphics.getClip();
+            graphics.setClip(textLocation.getX() - 2, textLocation.getY() - letterHeight, totalWidth + 4, letterHeight);
+
+            int xOffset = textLocation.getX();
+            for (int i = 0; i < name.length(); i++) {
+                char c = name.charAt(i);
+
+                graphics.setColor(Color.BLACK);
+                graphics.drawString(String.valueOf(c), xOffset + 1, textLocation.getY() + dy + 1);
+
+                if (colorEffect != null && colorEffect.startsWith("GRADIENT_")) {
+                    Color[] grad = getGradientColors(colorEffect);
+                    drawLetterWithGradient(graphics, c, xOffset, textLocation.getY() + dy, grad[0], grad[1], letterHeight);
+                } else {
+                    graphics.setColor(letterColors[i]);
+                    graphics.drawString(String.valueOf(c), xOffset, textLocation.getY() + dy);
+                }
+
+                xOffset += fm.charWidth(c);
+            }
+
+            graphics.setClip(oldClip);
+        } else if ("SPIRAL_REVERSE".equals(movementEffect)) {
+            FontMetrics fmOrig = graphics.getFontMetrics();
+            int totalWidth = 0;
+            for (char c : name.toCharArray()) totalWidth += fmOrig.charWidth(c);
+
+            int centerX = textLocation.getX() + totalWidth / 2;
+            int centerY = textLocation.getY() - letterHeight / 2;
+            double radius = totalWidth * 0.4;
+
+            for (int i = 0; i < name.length(); i++) {
+                char c = name.charAt(i);
+                double angle = (2 * Math.PI / name.length()) * i - time * 0.05;  // ← negativo
+                int x = centerX + (int)(Math.cos(angle) * radius) - fmOrig.charWidth(c) / 2;
+                int y = centerY + (int)(Math.sin(angle) * radius * 0.4);
+
+                graphics.setColor(Color.BLACK);
+                graphics.drawString(String.valueOf(c), x + 1, y + 1);
+
+                if (colorEffect != null && colorEffect.startsWith("GRADIENT_")) {
+                    Color[] grad = getGradientColors(colorEffect);
+                    drawLetterWithGradient(graphics, c, x, y, grad[0], grad[1], letterHeight);
+                } else {
+                    graphics.setColor(letterColors[i]);
+                    graphics.drawString(String.valueOf(c), x, y);
+                }
+            }
+        } else if ("SPIRAL".equals(movementEffect)) {
+            FontMetrics fmOrig = graphics.getFontMetrics();
+            int totalWidth = 0;
+            for (char c : name.toCharArray()) totalWidth += fmOrig.charWidth(c);
+
+            int centerX = textLocation.getX() + totalWidth / 2;
+            int centerY = textLocation.getY() - letterHeight / 2;
+            double radius = totalWidth * 0.4;
+
+            for (int i = 0; i < name.length(); i++) {
+                char c = name.charAt(i);
+                double angle = (2 * Math.PI / name.length()) * i + time * 0.05;
+                int x = centerX + (int)(Math.cos(angle) * radius) - fmOrig.charWidth(c) / 2;
+                int y = centerY + (int)(Math.sin(angle) * radius * 0.4);
+
+                graphics.setColor(Color.BLACK);
+                graphics.drawString(String.valueOf(c), x + 1, y + 1);
+
+                if (colorEffect != null && colorEffect.startsWith("GRADIENT_")) {
+                    Color[] grad = getGradientColors(colorEffect);
+                    drawLetterWithGradient(graphics, c, x, y, grad[0], grad[1], letterHeight);
+                } else {
+                    graphics.setColor(letterColors[i]);
+                    graphics.drawString(String.valueOf(c), x, y);
+                }
+            }
+        } else if ("ZOOM".equals(movementEffect)) {
+            int xOffset = textLocation.getX();
+            double speed = 0.03;
+            int activeIndex = (int)(time * speed * name.length()) % name.length();
+
+            for (int i = 0; i < name.length(); i++) {
+                char c = name.charAt(i);
+                Font originalFont = graphics.getFont();
+
+                boolean isActive = i == activeIndex;
+                float scale = isActive ? 1.2f : 1.0f;
+                Font scaledFont = originalFont.deriveFont(originalFont.getSize2D() * scale);
+                graphics.setFont(scaledFont);
+                FontMetrics fmScaled = graphics.getFontMetrics();
+
+                int dy = isActive ? (int)(originalFont.getSize2D() * 0.1f) : 0;  // ← baja en vez de subir
+
+
+                graphics.setColor(Color.BLACK);
+                graphics.drawString(String.valueOf(c), xOffset + 1, textLocation.getY() + dy + 1);
+
+                if (colorEffect != null && colorEffect.startsWith("GRADIENT_")) {
+                    Color[] grad = getGradientColors(colorEffect);
+                    drawLetterWithGradient(graphics, c, xOffset, textLocation.getY() + dy, grad[0], grad[1], (int)(letterHeight * scale));
+                } else {
+                    graphics.setColor(letterColors[i]);
+                    graphics.drawString(String.valueOf(c), xOffset, textLocation.getY() + dy);
+                }
+
+                xOffset += fmScaled.charWidth(c);
+                graphics.setFont(originalFont);
+            }
+        } else if ("ECHO".equals(movementEffect)) {
+            int[][] offsets = {
+                    {-16, -12}, {20, -8}, {-10, 16}, {12, 10}
+            };
+            float[] alphas = {0.55f, 0.65f, 0.60f, 0.50f};
+            float[] scales = {0.75f, 0.85f, 0.90f, 0.70f};
+
+            // Dibuja las copias primero
+            Font originalFont = graphics.getFont();
+            for (int s = 0; s < offsets.length; s++) {
+                int dx = offsets[s][0];
+                int dy = offsets[s][1];
+                float scale = scales[s];
+                int alpha = (int)(alphas[s] * 255);
+
+                graphics.setFont(originalFont.deriveFont(originalFont.getSize2D() * scale));
+                FontMetrics fmS = graphics.getFontMetrics();
+                int xOffset = textLocation.getX() + dx;
+
+                for (int i = 0; i < name.length(); i++) {
+                    char c = name.charAt(i);
+                    Color base = letterColors[i];
+                    graphics.setColor(new Color(base.getRed(), base.getGreen(), base.getBlue(), alpha));
+                    graphics.drawString(String.valueOf(c), xOffset, textLocation.getY() + dy);
+                    xOffset += fmS.charWidth(c);
+                }
+            }
+
+            // Dibuja el nombre principal encima
+            graphics.setFont(originalFont);
+            int xOffset = textLocation.getX();
+            for (int i = 0; i < name.length(); i++) {
+                char c = name.charAt(i);
+                graphics.setColor(Color.BLACK);
+                graphics.drawString(String.valueOf(c), xOffset + 1, textLocation.getY() + 1);
+                if (colorEffect != null && colorEffect.startsWith("GRADIENT_")) {
+                    Color[] grad = getGradientColors(colorEffect);
+                    drawLetterWithGradient(graphics, c, xOffset, textLocation.getY(), grad[0], grad[1], letterHeight);
+                } else {
+                    graphics.setColor(letterColors[i]);
+                    graphics.drawString(String.valueOf(c), xOffset, textLocation.getY());
+                }
+                xOffset += fm.charWidth(c);
+            }
+            graphics.setFont(originalFont);
+        }
+
+        else if ("SCROLL".equals(movementEffect)) {
+            int totalWidth = 0;
+            for (char c : name.toCharArray()) totalWidth += fm.charWidth(c);
+
+            int range = totalWidth + 40;
+            double cycle = time * 1.5 % range;
+            int dx = (int) cycle - totalWidth;
+
+            int xOffset = textLocation.getX() + dx;
+            for (int i = 0; i < name.length(); i++) {
+                char c = name.charAt(i);
+                graphics.setColor(Color.BLACK);
+                graphics.drawString(String.valueOf(c), xOffset + 1, textLocation.getY() + 1);
+                if (colorEffect != null && colorEffect.startsWith("GRADIENT_")) {
+                    Color[] grad = getGradientColors(colorEffect);
+                    drawLetterWithGradient(graphics, c, xOffset, textLocation.getY(), grad[0], grad[1], letterHeight);
+                } else {
+                    graphics.setColor(letterColors[i]);
+                    graphics.drawString(String.valueOf(c), xOffset, textLocation.getY());
+                }
+                xOffset += fm.charWidth(c);
+            }
+        } else if ("FLIP".equals(movementEffect)) {
+            double cycle = time % 4.0;
+            boolean visible = cycle < 2.5;
+            if (visible) {
+                int xOffset = textLocation.getX();
+                for (int i = 0; i < name.length(); i++) {
+                    char c = name.charAt(i);
+                    graphics.setColor(Color.BLACK);
+                    graphics.drawString(String.valueOf(c), xOffset + 1, textLocation.getY() + 1);
+                    if (colorEffect != null && colorEffect.startsWith("GRADIENT_")) {
+                        Color[] grad = getGradientColors(colorEffect);
+                        drawLetterWithGradient(graphics, c, xOffset, textLocation.getY(), grad[0], grad[1], letterHeight);
+                    } else {
+                        graphics.setColor(letterColors[i]);
+                        graphics.drawString(String.valueOf(c), xOffset, textLocation.getY());
+                    }
+                    xOffset += fm.charWidth(c);
+                }
+            }
+
+        } else if ("CASCADE".equals(movementEffect)) {
+            int xOffset = textLocation.getX();
+            for (int i = 0; i < name.length(); i++) {
+                char c = name.charAt(i);
+                double phase = time * 0.1 - i * 0.3;
+                int dy = (int)(Math.sin(phase) * 10);
+                graphics.setColor(Color.BLACK);
+                graphics.drawString(String.valueOf(c), xOffset + 1, textLocation.getY() + dy + 1);
+                if (colorEffect != null && colorEffect.startsWith("GRADIENT_")) {
+                    Color[] grad = getGradientColors(colorEffect);
+                    drawLetterWithGradient(graphics, c, xOffset, textLocation.getY() + dy, grad[0], grad[1], letterHeight);
+                } else {
+                    graphics.setColor(letterColors[i]);
+                    graphics.drawString(String.valueOf(c), xOffset, textLocation.getY() + dy);
+                }
+                xOffset += fm.charWidth(c);
+            }
+        }
+
+
+
+        else if ("FLOAT".equals(movementEffect)) {
             int xOffset = textLocation.getX();
             int dy = (int) (Math.sin(time * 0.09) * 6);
             for (int i = 0; i < name.length(); i++) {
@@ -308,6 +772,8 @@ public class NameOverlay extends Overlay {
             }
 
         }
+
+
         else {
             int xOffset = textLocation.getX();
             for (int i = 0; i < name.length(); i++) {
@@ -445,9 +911,178 @@ public class NameOverlay extends Overlay {
                     colors[i] = Color.getHSBColor(0.0f, 1.0f, bri);
                     break;
                 }
+                    case "GOLD": {
+                        float bri = (float)(0.7 + Math.sin(time * 0.1 + i * 0.2) * 0.3);
+                        colors[i] = Color.getHSBColor(0.13f, 1.0f, bri);
+                        break;
+                    }
+                    case "OCEAN": {
+                        float hue = (float)(0.5 + Math.sin(time * 0.04 + i * 0.2) * 0.08);
+                        float bri = (float)(0.6 + Math.sin(time * 0.08 + i * 0.3) * 0.3);
+                        colors[i] = Color.getHSBColor(hue, 0.8f, bri);
+                        break;
+                    }
+                    case "SUNSET": {
+                        float hue = (float)((0.05 + Math.sin(time * 0.03 + i * 0.15) * 0.05) % 1.0);
+                        float sat = (float)(0.8 + Math.sin(time * 0.05) * 0.2);
+                        colors[i] = Color.getHSBColor(hue, sat, 1.0f);
+                        break;
+                    }
+                    case "VOID": {
+                        float bri = (float)(0.3 + Math.sin(time * 0.08 + i * 0.5) * 0.2);
+                        colors[i] = Color.getHSBColor(0.78f, 0.9f, bri);
+                        break;
+                    }
+                    case "CANDY": {
+                        float[] hues = {0.9f, 0.6f, 0.15f};
+                        float hue = hues[(int)(time * 0.5 + i) % hues.length];
+                        colors[i] = Color.getHSBColor(hue, 0.5f, 1.0f);
+                        break;
+                    }
+                    case "THUNDER": {
+                        float bri = (float)(0.7 + Math.sin(time * 0.3 + i * 0.7) * 0.3);
+                        colors[i] = Math.random() > 0.95
+                                ? Color.WHITE
+                                : Color.getHSBColor(0.15f, 0.9f, bri);
+                        break;
+                    }
+                    case "CORRUPTION": {
+                        float bri = (float)(0.3 + Math.sin(time * 0.06 + i * 0.4) * 0.2);
+                        colors[i] = Color.getHSBColor(0.33f, 1.0f, bri);
+                        break;
+                    }
+                    case "ANGELIC": {
+                        float bri = (float)(0.8 + Math.sin(time * 0.08 + i * 0.3) * 0.2);
+                        colors[i] = Math.random() > 0.97
+                                ? new Color(255, 215, 0)
+                                : Color.getHSBColor(0.0f, 0.0f, bri);
+                        break;
+                    }
+                    case "INFERNO": {
+                        float phase = (float)((time * 0.06 + i * 0.1) % 1.0);
+                        if (phase < 0.33f) {
+                            colors[i] = blendColors(new Color(255, 0, 0), new Color(255, 100, 0), phase * 3);
+                        } else if (phase < 0.66f) {
+                            colors[i] = blendColors(new Color(255, 100, 0), new Color(255, 220, 0), (phase - 0.33f) * 3);
+                        } else {
+                            colors[i] = blendColors(new Color(255, 220, 0), new Color(255, 0, 0), (phase - 0.66f) * 3);
+                        }
+                        break;
+                    }
+                    case "DEEP_SEA": {
+                        float hue = (float)(0.55 + Math.sin(time * 0.03 + i * 0.2) * 0.05);
+                        float bri = (float)(0.4 + Math.sin(time * 0.1 + i * 0.5) * 0.2);
+                        colors[i] = Math.random() > 0.97
+                                ? new Color(0, 255, 255)
+                                : Color.getHSBColor(hue, 1.0f, bri);
+                        break;
+                    }
+                    case "SAKURA": {
+                        float bri = (float)(0.8 + Math.sin(time * 0.06 + i * 0.3) * 0.2);
+                        colors[i] = Color.getHSBColor(0.93f, 0.4f, bri);
+                        break;
+                    }
+                    case "ASH": {
+                        float bri = (float)(0.4 + Math.sin(time * 0.05 + i * 0.3) * 0.2);
+                        colors[i] = Math.random() > 0.97
+                                ? Color.WHITE
+                                : Color.getHSBColor(0.0f, 0.0f, bri);
+                        break;
+                    }
+                    case "POISON": {
+                        float bri = (float)(0.5 + Math.sin(time * 0.2 + i * 0.4) * 0.4);
+                        colors[i] = Color.getHSBColor(0.35f, 1.0f, bri);
+                        break;
+                    }
+                    case "COSMIC": {
+                        float hue = (float)((0.65 + Math.sin(time * 0.02 + i * 0.5) * 0.1) % 1.0);
+                        float bri = (float)(0.5 + Math.sin(time * 0.08 + i * 0.7) * 0.3);
+                        colors[i] = Math.random() > 0.97
+                                ? Color.WHITE
+                                : Color.getHSBColor(hue, 0.8f, bri);
+                        break;
+                    }
+                    case "GLITCH_COLOR": {
+                        int seed = (int)(time * 3 + i * 7);
+                        java.util.Random r = new java.util.Random(seed);
+                        colors[i] = new Color(r.nextInt(256), r.nextInt(256), r.nextInt(256));
+                        break;
+                    }
+                    case "HOLOGRAM": {
+                        float bri = (float)(0.7 + Math.sin(time * 0.15 + i * 0.4) * 0.3);
+                        colors[i] = Math.random() > 0.97
+                                ? Color.WHITE
+                                : Color.getHSBColor(0.5f, 0.6f, bri);
+                        break;
+                    }
+                    case "GLOW": {
+                        float bri = (float)(0.5 + Math.sin(time * 0.08) * 0.5);
+                        colors[i] = blendColors(baseColor, Color.WHITE, bri);
+                        break;
+                    }
+                    case "NEON_PINK": {
+                        float bri = (float)(0.7 + Math.sin(time * 0.15 + i * 0.2) * 0.3);
+                        colors[i] = Color.getHSBColor(0.9f, 1.0f, bri);
+                        break;
+                    }
+                    case "NEON_GREEN": {
+                        float bri = (float)(0.6 + Math.sin(time * 0.15 + i * 0.2) * 0.4);
+                        colors[i] = Color.getHSBColor(0.35f, 1.0f, bri);
+                        break;
+                    }
+                    case "NEON_BLUE": {
+                        float bri = (float)(0.7 + Math.sin(time * 0.15 + i * 0.2) * 0.3);
+                        colors[i] = Color.getHSBColor(0.6f, 1.0f, bri);
+                        break;
+                    }
+                    case "NEON_ORANGE": {
+                        float bri = (float)(0.7 + Math.sin(time * 0.15 + i * 0.2) * 0.3);
+                        colors[i] = Color.getHSBColor(0.08f, 1.0f, bri);
+                        break;
+                    }
                 case "MATRIX": {
                     float bri = (float) (0.3 + Math.sin(time * 0.2 + i * 0.8) * 0.4);
                     colors[i] = Color.getHSBColor(0.33f, 1.0f, Math.max(0.2f, bri));
+                    break;
+                }
+                case "SOFT_RAINBOW": {
+                    float hue = (float)((time * 0.03 + i * 0.12) % 1.0);
+                    colors[i] = Color.getHSBColor(hue, 0.35f, 1.0f);
+                    break;
+                }
+                case "SOFT_MINT": {
+                    float bri = (float)(0.85 + Math.sin(time * 0.06 + i * 0.3) * 0.1);
+                    colors[i] = Color.getHSBColor(0.42f, 0.35f, bri);
+                    break;
+                }
+                case "SOFT_LAVENDER": {
+                    float bri = (float)(0.85 + Math.sin(time * 0.06 + i * 0.3) * 0.1);
+                    colors[i] = Color.getHSBColor(0.75f, 0.35f, bri);
+                    break;
+                }
+                case "SOFT_PEACH": {
+                    float bri = (float)(0.9 + Math.sin(time * 0.06 + i * 0.3) * 0.1);
+                    colors[i] = Color.getHSBColor(0.07f, 0.4f, bri);
+                    break;
+                }
+                case "SOFT_SKY": {
+                    float bri = (float)(0.85 + Math.sin(time * 0.06 + i * 0.3) * 0.1);
+                    colors[i] = Color.getHSBColor(0.57f, 0.35f, bri);
+                    break;
+                }
+                case "SOFT_BUTTER": {
+                    float bri = (float)(0.9 + Math.sin(time * 0.06 + i * 0.3) * 0.1);
+                    colors[i] = Color.getHSBColor(0.15f, 0.35f, bri);
+                    break;
+                }
+                case "SOFT_ROSE": {
+                    float bri = (float)(0.9 + Math.sin(time * 0.06 + i * 0.3) * 0.1);
+                    colors[i] = Color.getHSBColor(0.95f, 0.35f, bri);
+                    break;
+                }
+                case "SOFT_LILAC": {
+                    float bri = (float)(0.85 + Math.sin(time * 0.06 + i * 0.3) * 0.1);
+                    colors[i] = Color.getHSBColor(0.8f, 0.3f, bri);
                     break;
                 }
                 case "GRADIENT_VERT":

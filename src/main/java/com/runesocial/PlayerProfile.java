@@ -6,6 +6,7 @@ public class PlayerProfile {
     public String username;
     public String nameColor;
     public String colorEffect;
+    public String petNameStatus;  // ← nuevo
     public String emoticon;
     public String movementEffect;
     public Map<String, PetInfo> pets;
