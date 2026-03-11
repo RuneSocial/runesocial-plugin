@@ -33,6 +33,8 @@ class RemoteConfig {
 	public int maxTiles = 5;
 	public int maxPlayers = 20;
 	public int pollInterval = 5000;
+	public String motd;
+	public String playerIndicatorsWarning;
 }
 
 @Slf4j
@@ -55,6 +57,7 @@ public class RuneSocialPlugin extends Plugin
 	@Inject private ChatMessageManager chatMessageManager;
 	@Inject private ApiClient apiClient;
 	@Inject private net.runelite.client.callback.ClientThread clientThread;
+	@Inject private net.runelite.client.plugins.PluginManager pluginManager;
 
 	private int lastFollowerId = -1;
 	private boolean askedForName = false;
@@ -85,6 +88,7 @@ public class RuneSocialPlugin extends Plugin
 					remoteConfig.pollInterval / 1000,
 					TimeUnit.SECONDS);
 		});
+
 	}
 
 	@Override
@@ -154,6 +158,22 @@ public class RuneSocialPlugin extends Plugin
 		if (event.getGameState() == GameState.LOGGED_IN)
 		{
 			scheduler.submit(this::registerPlayer);
+
+			if (remoteConfig != null && remoteConfig.motd != null && !remoteConfig.motd.isEmpty())
+			{
+				sendChatMessage(remoteConfig.motd);
+			}
+
+			pluginManager.getPlugins().stream()
+					.filter(p -> p.getClass().getSimpleName().equals("PlayerIndicatorsPlugin"))
+					.filter(p -> pluginManager.isPluginEnabled(p))
+					.findFirst()
+					.ifPresent(p -> {
+						if (remoteConfig != null && remoteConfig.playerIndicatorsWarning != null)
+						{
+							sendChatMessage(remoteConfig.playerIndicatorsWarning);
+						}
+					});
 		}
 	}
 	private void registerPlayer()
@@ -181,7 +201,7 @@ public class RuneSocialPlugin extends Plugin
 		}
 	}
 
-	// Sync your profile to the server - only sends active pet
+	// Sync your profile to the server
 	public void syncProfile()
 	{
 		Player local = client.getLocalPlayer();
@@ -200,7 +220,7 @@ public class RuneSocialPlugin extends Plugin
 		scheduler.submit(() -> {
 			PlayerProfile profile = apiClient.fetchOwnProfile(username);
 
-			// ← aquí también
+
 			if (profile != null && profile.petNameStatus != null && !profile.petNameStatus.isEmpty()) {
 				clientThread.invokeLater(() ->
 						sendChatMessage("<col=ffff00>[RuneSocial]</col> " + profile.petNameStatus)
