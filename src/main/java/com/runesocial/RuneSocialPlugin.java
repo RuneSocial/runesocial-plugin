@@ -62,14 +62,20 @@ public class RuneSocialPlugin extends Plugin
 	private int lastFollowerId = -1;
 	private boolean askedForName = false;
 	private String apiKey = null;
-	public String activePetName = null;    // ← aquí
-	public Color activePetColor = null;    // ← aquí
-	public RemoteConfig remoteConfig = new RemoteConfig();  // ← aquí
+	public String activePetName = null;
+	public Color activePetColor = null;
+	public RemoteConfig remoteConfig = new RemoteConfig();
+
+	// FIX: Track which pet IDs already showed the name message this session
+	private final Set<String> shownPetNameIds = new HashSet<>();
+	// FIX: Only show playerIndicatorsWarning once per login session
+	private boolean hasShownIndicatorsWarning = false;
 
 	private ScheduledExecutorService scheduler;
 
 	// Nearby player profiles cache
 	public final Map<String, PlayerProfile> nearbyProfiles = new HashMap<>();
+
 	@Override
 	protected void startUp() throws Exception
 	{
@@ -77,6 +83,8 @@ public class RuneSocialPlugin extends Plugin
 		lastFollowerId = -1;
 		activePetName = null;
 		activePetColor = null;
+		shownPetNameIds.clear();
+		hasShownIndicatorsWarning = false;
 		scheduler = Executors.newSingleThreadScheduledExecutor();
 
 		scheduler.submit(() -> {
@@ -88,7 +96,6 @@ public class RuneSocialPlugin extends Plugin
 					remoteConfig.pollInterval / 1000,
 					TimeUnit.SECONDS);
 		});
-
 	}
 
 	@Override
@@ -100,8 +107,10 @@ public class RuneSocialPlugin extends Plugin
 		lastFollowerId = -1;
 		askedForName = false;
 		apiKey = null;
-		activePetName = null;    // ← aquí
-		activePetColor = null;   // ← aquí
+		activePetName = null;
+		activePetColor = null;
+		shownPetNameIds.clear();
+		hasShownIndicatorsWarning = false;
 	}
 
 	@Subscribe
@@ -135,13 +144,12 @@ public class RuneSocialPlugin extends Plugin
 						if (petData != null)
 						{
 							petName = petData.name;
-
 						}
 					}
 				}
 
 				apiClient.updateProfile(username, apiKey, config, petId, petName, petColor);
-				activePetColor = config.petNameColor();  // ← aquí
+				activePetColor = config.petNameColor();
 			});
 		});
 	}
@@ -149,11 +157,13 @@ public class RuneSocialPlugin extends Plugin
 	@Subscribe
 	public void onGameStateChanged(GameStateChanged event)
 	{
-		if (event.getGameState() == GameState.LOADING)  // ← LOADING en vez de LOGGED_IN
+		if (event.getGameState() == GameState.LOADING)
 		{
 			lastFollowerId = -1;
 			activePetName = null;
 			activePetColor = null;
+			// FIX: DO NOT clear shownPetNameIds here — that caused the spam on boat/zone change.
+			// We only clear it on full re-login (LOGGED_IN after being at LOGIN_SCREEN).
 		}
 		if (event.getGameState() == GameState.LOGGED_IN)
 		{
@@ -164,18 +174,31 @@ public class RuneSocialPlugin extends Plugin
 				sendChatMessage(remoteConfig.motd);
 			}
 
-			pluginManager.getPlugins().stream()
-					.filter(p -> p.getClass().getSimpleName().equals("PlayerIndicatorsPlugin"))
-					.filter(p -> pluginManager.isPluginEnabled(p))
-					.findFirst()
-					.ifPresent(p -> {
-						if (remoteConfig != null && remoteConfig.playerIndicatorsWarning != null)
-						{
-							sendChatMessage(remoteConfig.playerIndicatorsWarning);
-						}
-					});
+			// FIX: Only show playerIndicatorsWarning once per login session
+			if (!hasShownIndicatorsWarning)
+			{
+				pluginManager.getPlugins().stream()
+						.filter(p -> p.getClass().getSimpleName().equals("PlayerIndicatorsPlugin"))
+						.filter(p -> pluginManager.isPluginEnabled(p))
+						.findFirst()
+						.ifPresent(p -> {
+							if (remoteConfig != null && remoteConfig.playerIndicatorsWarning != null)
+							{
+								sendChatMessage(remoteConfig.playerIndicatorsWarning);
+								hasShownIndicatorsWarning = true;
+							}
+						});
+			}
+		}
+
+		// FIX: Reset session flags when player is at login screen (actual logout/relog)
+		if (event.getGameState() == GameState.LOGIN_SCREEN)
+		{
+			shownPetNameIds.clear();
+			hasShownIndicatorsWarning = false;
 		}
 	}
+
 	private void registerPlayer()
 	{
 		Player local = client.getLocalPlayer();
@@ -201,7 +224,6 @@ public class RuneSocialPlugin extends Plugin
 		}
 	}
 
-	// Sync your profile to the server
 	public void syncProfile()
 	{
 		Player local = client.getLocalPlayer();
@@ -219,7 +241,6 @@ public class RuneSocialPlugin extends Plugin
 
 		scheduler.submit(() -> {
 			PlayerProfile profile = apiClient.fetchOwnProfile(username);
-
 
 			if (profile != null && profile.petNameStatus != null && !profile.petNameStatus.isEmpty()) {
 				clientThread.invokeLater(() ->
@@ -248,7 +269,6 @@ public class RuneSocialPlugin extends Plugin
 		});
 	}
 
-	// Query nearby players and update cache
 	private void pollNearbyPlayers()
 	{
 		if (client.getGameState() != GameState.LOGGED_IN) return;
@@ -309,8 +329,6 @@ public class RuneSocialPlugin extends Plugin
 
 		NPC follower = client.getFollower();
 
-
-
 		if (follower == null)
 		{
 			lastFollowerId = -1;
@@ -329,7 +347,6 @@ public class RuneSocialPlugin extends Plugin
 			Player local = client.getLocalPlayer();
 			if (local == null) return;
 
-
 			PlayerProfile profile = apiClient.fetchOwnProfile(local.getName());
 			if (profile != null && profile.petNameStatus != null && !profile.petNameStatus.isEmpty()) {
 				clientThread.invokeLater(() ->
@@ -340,7 +357,7 @@ public class RuneSocialPlugin extends Plugin
 			String petId = String.valueOf(followerId);
 			String existingName = null;
 			String existingColor = null;
-			log.debug("petId buscado: {}", petId);  // ← luego el log
+			log.debug("petId buscado: {}", petId);
 			log.debug("pets en perfil: {}", profile != null && profile.pets != null ? profile.pets.keySet() : "null");
 
 			if (profile != null && profile.pets != null)
@@ -353,14 +370,15 @@ public class RuneSocialPlugin extends Plugin
 				}
 			}
 
-			activePetName = existingName;  // ← aquí
-			activePetColor = existingColor != null  // ← aquí
+			activePetName = existingName;
+			activePetColor = existingColor != null
 					? hexToColor(existingColor)
 					: config.petNameColor();
 
 			final String finalName = existingName;
 			log.debug("askedForName: {}", askedForName);
 			log.debug("finalName: {}", finalName);
+
 			if (!askedForName)
 			{
 				askedForName = true;
@@ -370,7 +388,12 @@ public class RuneSocialPlugin extends Plugin
 				}
 				else
 				{
-					sendChatMessage("Your pet's name is: <col=ff00ff>" + finalName + "</col>. Type ::petname to change it.");
+					// FIX: Only show "Your pet's name is" message once per pet per session
+					if (!shownPetNameIds.contains(petId))
+					{
+						shownPetNameIds.add(petId);
+						sendChatMessage("Your pet's name is: <col=ff00ff>" + finalName + "</col>. Type ::petname to change it.");
+					}
 				}
 			}
 		});
@@ -394,7 +417,6 @@ public class RuneSocialPlugin extends Plugin
 						String username = local.getName();
 						if (username == null) return;
 
-
 						String nameError = apiClient.validatePetName(trimmed, username);
 						if (nameError != null)
 						{
@@ -414,13 +436,16 @@ public class RuneSocialPlugin extends Plugin
 						activePetName = trimmed;
 						activePetColor = config.petNameColor();
 
+						// FIX: Mark this pet as shown after naming it
+						shownPetNameIds.add(String.valueOf(followerId));
+
 						sendChatMessage("Name saved: <col=ff00ff>" + trimmed + "</col> for " + petDisplayName + ".");
 					});
 				})
 				.build();
 	}
 
-	public void sendChatMessage(String message)  // ← cambia private por public
+	public void sendChatMessage(String message)
 	{
 		chatMessageManager.queue(QueuedMessage.builder()
 				.type(ChatMessageType.GAMEMESSAGE)
@@ -428,7 +453,7 @@ public class RuneSocialPlugin extends Plugin
 				.build());
 	}
 
-	private Color hexToColor(String hex)  // ← aquí
+	private Color hexToColor(String hex)
 	{
 		try {
 			return Color.decode(hex);
