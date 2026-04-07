@@ -95,7 +95,7 @@ public interface RuneSocialConfig extends Config
 	@ConfigItem(
 			keyName = "movementEffect",
 			name = "Movement Effect",
-			description = "Efecto de movimiento para tu nombre",
+			description = "Movement effect for your name",
 			section = "name"
 	)
 	default MovementEffect movementEffect()
@@ -108,7 +108,7 @@ public interface RuneSocialConfig extends Config
 	// =====================================
 	@ConfigSection(
 			name = "What's your mood?",
-			description = "Elige tu emoji de estado de ánimo",
+			description = "Choose your mood emoji",
 			position = 0
 	)
 	String moodSection = "mood";
@@ -116,7 +116,7 @@ public interface RuneSocialConfig extends Config
 	@ConfigItem(
 			keyName = "emoticon",
 			name = "Emoticon",
-			description = "Carita que aparece encima de tu nombre",
+			description = "Emoticon displayed above your name",
 			section = "mood"
 	)
 	default Emoticon emoticon()
@@ -131,7 +131,7 @@ public interface RuneSocialConfig extends Config
 	// =====================================
 	@ConfigSection(
 			name = "Name Effects",
-			description = "Efectos para tu nombre",
+			description = "Effects for your name",
 			position = 1
 	)
 	String nameSection = "name";
@@ -139,7 +139,7 @@ public interface RuneSocialConfig extends Config
 	@ConfigItem(
 			keyName = "nameColor",
 			name = "Name Color",
-			description = "Color del nombre arriba del jugador",
+			description = "Color of the name above the player",
 			section = "name"
 	)
 	default Color nameColor()
@@ -205,7 +205,7 @@ public interface RuneSocialConfig extends Config
 	@ConfigItem(
 			keyName = "colorEffect",
 			name = "Color Effect",
-			description = "Efecto de color para tu nombre",
+			description = "Color effect for your name",
 			section = "name"
 	)
 	default ColorEffect colorEffect()
